@@ -82,6 +82,48 @@ export default function Settings() {
     }
   };
 
+  const handleExportCSV = async () => {
+    try {
+      const exportRequest = {
+        export_type: 'trades',
+        format_type: 'csv',
+        date_range: {
+          start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+          end_date: new Date().toISOString()
+        },
+        filters: {}
+      };
+      
+      await apiService.createExportRequest(exportRequest);
+      setSuccess('CSV export generated successfully');
+      setError('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate CSV export');
+      setSuccess('');
+    }
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      const exportRequest = {
+        export_type: 'trades',
+        format_type: 'pdf',
+        date_range: {
+          start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+          end_date: new Date().toISOString()
+        },
+        filters: {}
+      };
+      
+      await apiService.createExportRequest(exportRequest);
+      setSuccess('PDF export generated successfully');
+      setError('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate PDF export');
+      setSuccess('');
+    }
+  };
+
   const tabs = [
     { id: 'trading', name: 'Trading', icon: TrendingUp },
     { id: 'integrations', name: 'Integrations', icon: Zap },
@@ -470,6 +512,7 @@ export default function Settings() {
                   <div className="flex space-x-3">
                     <button
                       type="button"
+                      onClick={handleExportCSV}
                       className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     >
                       <Download className="h-4 w-4 mr-2" />
@@ -477,6 +520,7 @@ export default function Settings() {
                     </button>
                     <button
                       type="button"
+                      onClick={handleExportPDF}
                       className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     >
                       <Download className="h-4 w-4 mr-2" />
