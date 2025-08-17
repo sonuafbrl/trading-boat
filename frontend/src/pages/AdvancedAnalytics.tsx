@@ -45,14 +45,22 @@ export default function AdvancedAnalyticsPage() {
 
   if (!analytics) return null;
 
-  const formatCurrency = (value: number) => `₹${value.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
-  const formatPercentage = (value: number) => `${value.toFixed(2)}%`;
+  const formatCurrency = (value: number | undefined) => {
+    if (value === undefined || value === null) return '₹0.00';
+    return `₹${value.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+  };
+  const formatPercentage = (value: number | undefined) => {
+    if (value === undefined || value === null) return '0.00%';
+    return `${value.toFixed(2)}%`;
+  };
 
-  const getReturnColor = (value: number) => {
+  const getReturnColor = (value: number | undefined) => {
+    if (value === undefined || value === null) return 'text-gray-600';
     return value >= 0 ? 'text-green-600' : 'text-red-600';
   };
 
-  const getReturnIcon = (value: number) => {
+  const getReturnIcon = (value: number | undefined) => {
+    if (value === undefined || value === null) return <TrendingUp className="h-4 w-4" />;
     return value >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />;
   };
 
@@ -134,7 +142,7 @@ export default function AdvancedAnalyticsPage() {
             <div className="ml-4">
               <div className="text-sm font-medium text-gray-500">Sharpe Ratio</div>
               <div className="text-2xl font-bold text-gray-900">
-                {analytics.sharpe_ratio.toFixed(2)}
+                {analytics.sharpe_ratio?.toFixed(2) || '0.00'}
               </div>
             </div>
           </div>
@@ -196,19 +204,19 @@ export default function AdvancedAnalyticsPage() {
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium text-gray-500">Value at Risk (5%)</span>
               <span className="text-sm font-bold text-orange-600">
-                {formatCurrency(analytics.risk_metrics.value_at_risk)}
+                {formatCurrency(analytics.risk_metrics?.value_at_risk)}
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium text-gray-500">Beta</span>
               <span className="text-sm font-bold text-gray-900">
-                {analytics.risk_metrics.beta.toFixed(2)}
+                {analytics.risk_metrics?.beta?.toFixed(2) || '0.00'}
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium text-gray-500">Alpha</span>
-              <span className={`text-sm font-bold ${getReturnColor(analytics.risk_metrics.alpha)}`}>
-                {formatPercentage(analytics.risk_metrics.alpha)}
+              <span className={`text-sm font-bold ${getReturnColor(analytics.risk_metrics?.alpha)}`}>
+                {formatPercentage(analytics.risk_metrics?.alpha)}
               </span>
             </div>
           </div>
@@ -245,13 +253,13 @@ export default function AdvancedAnalyticsPage() {
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium text-gray-500">Profit Factor</span>
               <span className="text-sm font-bold text-blue-600">
-                {analytics.profit_factor === Infinity ? '∞' : analytics.profit_factor.toFixed(2)}
+                {analytics.profit_factor === Infinity ? '∞' : (analytics.profit_factor?.toFixed(2) || '0.00')}
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium text-gray-500">Avg Trade Duration</span>
               <span className="text-sm font-bold text-gray-900">
-                {analytics.avg_trade_duration.toFixed(1)}h
+                {analytics.avg_trade_duration?.toFixed(1) || '0.0'}h
               </span>
             </div>
           </div>
