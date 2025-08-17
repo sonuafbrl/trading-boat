@@ -1,4 +1,4 @@
-const API_BASE_URL = (import.meta.env as any).VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 export interface User {
   id: number;
@@ -16,6 +16,10 @@ export interface UserSettings {
   telegram_id: string | null;
   mode: 'paper' | 'live';
   telegram_alerts: boolean;
+  email_notifications?: boolean;
+  news_sentiment_enabled?: boolean;
+  multi_strategy_enabled?: boolean;
+  bucket_trading_enabled?: boolean;
 }
 
 export interface Trade {
@@ -93,6 +97,88 @@ export interface StockSearchResult {
   name: string;
   exchange: string;
   current_price?: number;
+}
+
+export interface ThirdPartySettings {
+  email_service_provider?: string;
+  email_api_key?: string;
+  news_api_key?: string;
+  telegram_bot_token?: string;
+  webhook_url?: string;
+}
+
+export interface NewsAnalysis {
+  id: number;
+  stock_symbol: string;
+  headline: string;
+  sentiment_score: number;
+  source: string;
+  impact_score: number;
+  timestamp: string;
+}
+
+export interface TradingStrategy {
+  id: number;
+  name: string;
+  parameters: Record<string, any>;
+  is_active: boolean;
+  risk_level: string;
+  created_at: string;
+}
+
+export interface BucketOrder {
+  id: number;
+  name: string;
+  stocks: Array<{symbol: string; weight: number; action: string}>;
+  scheduled_time: string;
+  total_capital: number;
+  execution_type: string;
+  status: string;
+  created_at: string;
+}
+
+export interface BucketOrderCreate {
+  name: string;
+  stocks: Array<{symbol: string; weight: number; action: string}>;
+  scheduled_time: string;
+  total_capital: number;
+  execution_type: string;
+}
+
+export interface ExportRequest {
+  id: number;
+  export_type: string;
+  format_type: string;
+  status: string;
+  file_path?: string;
+  created_at: string;
+}
+
+export interface AdvancedAnalytics {
+  portfolio_value: number;
+  total_return: number;
+  return_percentage: number;
+  sharpe_ratio: number;
+  max_drawdown: number;
+  volatility: number;
+  win_rate: number;
+  avg_trade_duration: number;
+  total_trades: number;
+  winning_trades: number;
+  losing_trades: number;
+  avg_win: number;
+  avg_loss: number;
+  profit_factor: number;
+  risk_metrics: {
+    value_at_risk: number;
+    beta: number;
+    alpha: number;
+  };
+  performance_chart_data: Array<{
+    date: string;
+    portfolio_value: number;
+    cumulative_return: number;
+  }>;
 }
 
 class ApiService {
@@ -297,6 +383,73 @@ class ApiService {
     return this.request(`/me/wishlist/${wishlistId}`, {
       method: 'DELETE',
     });
+  }
+
+  async getThirdPartySettings(): Promise<ThirdPartySettings> {
+    return this.request('/me/third-party-settings');
+  }
+
+  async updateThirdPartySettings(settings: ThirdPartySettings): Promise<{ message: string }> {
+    return this.request('/me/third-party-settings', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    });
+  }
+
+  async getNewsSentiment(symbol: string): Promise<NewsAnalysis[]> {
+    return this.request(`/news/sentiment/${symbol}`);
+  }
+
+  async getMarketSentiment(symbols: string[]): Promise<any> {
+    return this.request(`/news/market-sentiment?symbols=${symbols.join(',')}`);
+  }
+
+  async getTradingStrategies(): Promise<TradingStrategy[]> {
+    return this.request('/me/strategies');
+  }
+
+  async createTradingStrategy(strategy: {name: string; parameters: Record<string, any>; risk_level: string}): Promise<TradingStrategy> {
+    return this.request('/me/strategies', {
+      method: 'POST',
+      body: JSON.stringify(strategy),
+    });
+  }
+
+  async getBucketOrders(): Promise<BucketOrder[]> {
+    return this.request('/me/bucket-orders');
+  }
+
+  async createBucketOrder(order: {
+    name: string;
+    stocks: Array<{symbol: string; weight: number; action: string}>;
+    scheduled_time: string;
+    total_capital: number;
+    execution_type: string;
+  }): Promise<BucketOrder> {
+    return this.request('/me/bucket-orders', {
+      method: 'POST',
+      body: JSON.stringify(order),
+    });
+  }
+
+  async createExportRequest(request: {
+    export_type: string;
+    format_type: string;
+    date_range: {start_date: string; end_date: string};
+    filters?: Record<string, any>;
+  }): Promise<ExportRequest> {
+    return this.request('/me/export', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  async getExportRequests(): Promise<ExportRequest[]> {
+    return this.request('/me/exports');
+  }
+
+  async getAdvancedAnalytics(days: number = 30): Promise<AdvancedAnalytics> {
+    return this.request(`/me/analytics/advanced?days=${days}`);
   }
 }
 

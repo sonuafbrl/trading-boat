@@ -9,6 +9,9 @@ import BrokerSetup from './pages/BrokerSetup';
 import Logs from './pages/Logs';
 import Backtest from './pages/Backtest';
 import Trading from './pages/Trading';
+import NewsSentiment from './pages/NewsSentiment';
+import AdvancedAnalytics from './pages/AdvancedAnalytics';
+import BucketTrading from './pages/BucketTrading';
 import Layout from './components/Layout';
 import AdminLayout from './components/AdminLayout';
 import OAuthCallback from './pages/OAuthCallback';
@@ -77,6 +80,9 @@ function App() {
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/trading" element={<Trading />} />
+                <Route path="/news-sentiment" element={<NewsSentiment />} />
+                <Route path="/advanced-analytics" element={<AdvancedAnalytics />} />
+                <Route path="/bucket-trading" element={<BucketTrading />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/broker" element={<BrokerSetup />} />
                 <Route path="/callback" element={<OAuthCallback />} />

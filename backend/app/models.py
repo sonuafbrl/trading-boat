@@ -32,7 +32,9 @@ class UserSettings:
     def __init__(self, user_id: int, capital_per_day: float = 10000.0, 
                  max_trades_per_day: int = 5, stop_loss_percent: float = 2.0,
                  broker: Optional[BrokerType] = None, telegram_id: Optional[str] = None,
-                 mode: TradingMode = TradingMode.PAPER, telegram_alerts: bool = False):
+                 mode: TradingMode = TradingMode.PAPER, telegram_alerts: bool = False,
+                 email_notifications: bool = True, news_sentiment_enabled: bool = False,
+                 multi_strategy_enabled: bool = False, bucket_trading_enabled: bool = False):
         self.user_id = user_id
         self.capital_per_day = capital_per_day
         self.max_trades_per_day = max_trades_per_day
@@ -41,6 +43,10 @@ class UserSettings:
         self.telegram_id = telegram_id
         self.mode = mode
         self.telegram_alerts = telegram_alerts
+        self.email_notifications = email_notifications
+        self.news_sentiment_enabled = news_sentiment_enabled
+        self.multi_strategy_enabled = multi_strategy_enabled
+        self.bucket_trading_enabled = bucket_trading_enabled
 
 class BrokerToken:
     def __init__(self, user_id: int, encrypted_token: str, expires_at: datetime):
@@ -131,6 +137,10 @@ class UserSettingsUpdate(BaseModel):
     telegram_id: Optional[str] = None
     mode: Optional[TradingMode] = None
     telegram_alerts: Optional[bool] = None
+    email_notifications: Optional[bool] = None
+    news_sentiment_enabled: Optional[bool] = None
+    multi_strategy_enabled: Optional[bool] = None
+    bucket_trading_enabled: Optional[bool] = None
 
 class BrokerCredentials(BaseModel):
     broker: BrokerType
@@ -230,6 +240,138 @@ class DashboardResponse(BaseModel):
     mode: TradingMode
     recent_trades: List[TradeResponse]
 
+class ThirdPartySettings:
+    def __init__(self, user_id: int, email_service_provider: Optional[str] = None,
+                 email_api_key: Optional[str] = None, news_api_key: Optional[str] = None,
+                 telegram_bot_token: Optional[str] = None, webhook_url: Optional[str] = None):
+        self.id = len(third_party_settings_db) + 1
+        self.user_id = user_id
+        self.email_service_provider = email_service_provider  # sendgrid, mailgun, smtp
+        self.email_api_key = email_api_key
+        self.news_api_key = news_api_key
+        self.telegram_bot_token = telegram_bot_token
+        self.webhook_url = webhook_url
+        self.created_at = datetime.now()
+
+class NewsAnalysis:
+    def __init__(self, stock_symbol: str, headline: str, sentiment_score: float, 
+                 source: str, impact_score: float):
+        self.id = len(news_analysis_db) + 1
+        self.stock_symbol = stock_symbol
+        self.headline = headline
+        self.sentiment_score = sentiment_score  # -1 to 1
+        self.source = source
+        self.impact_score = impact_score  # 0 to 1
+        self.timestamp = datetime.now()
+
+class TradingStrategy:
+    def __init__(self, user_id: int, name: str, parameters: dict, 
+                 is_active: bool = True, risk_level: str = "medium"):
+        self.id = len(trading_strategies_db) + 1
+        self.user_id = user_id
+        self.name = name
+        self.parameters = parameters
+        self.is_active = is_active
+        self.risk_level = risk_level  # low, medium, high
+        self.created_at = datetime.now()
+
+class BucketOrder:
+    def __init__(self, user_id: int, name: str, stocks: List[dict], 
+                 scheduled_time: datetime, total_capital: float, 
+                 execution_type: str = "market_open"):
+        self.id = len(bucket_orders_db) + 1
+        self.user_id = user_id
+        self.name = name
+        self.stocks = stocks  # [{"symbol": "RELIANCE", "weight": 0.3, "action": "buy"}]
+        self.scheduled_time = scheduled_time
+        self.total_capital = total_capital
+        self.execution_type = execution_type  # market_open, specific_time, condition_based
+        self.status = "pending"  # pending, executed, cancelled
+        self.created_at = datetime.now()
+
+class ExportRequest:
+    def __init__(self, user_id: int, export_type: str, format_type: str, 
+                 date_range: dict, filters: Optional[dict] = None):
+        self.id = len(export_requests_db) + 1
+        self.user_id = user_id
+        self.export_type = export_type  # trades, analytics, performance, logs
+        self.format_type = format_type  # csv, pdf
+        self.date_range = date_range
+        self.filters = filters
+        self.status = "processing"  # processing, completed, failed
+        self.file_path = None
+        self.created_at = datetime.now()
+
+class ThirdPartySettingsUpdate(BaseModel):
+    email_service_provider: Optional[str] = None
+    email_api_key: Optional[str] = None
+    news_api_key: Optional[str] = None
+    telegram_bot_token: Optional[str] = None
+    webhook_url: Optional[str] = None
+
+class NewsAnalysisResponse(BaseModel):
+    id: int
+    stock_symbol: str
+    headline: str
+    sentiment_score: float
+    source: str
+    impact_score: float
+    timestamp: datetime
+
+class TradingStrategyCreate(BaseModel):
+    name: str
+    parameters: dict
+    risk_level: str = "medium"
+
+class TradingStrategyResponse(BaseModel):
+    id: int
+    name: str
+    parameters: dict
+    is_active: bool
+    risk_level: str
+    created_at: datetime
+
+class BucketOrderCreate(BaseModel):
+    name: str
+    stocks: List[dict]
+    scheduled_time: datetime
+    total_capital: float
+    execution_type: str = "market_open"
+
+class BucketOrderResponse(BaseModel):
+    id: int
+    name: str
+    stocks: List[dict]
+    scheduled_time: datetime
+    total_capital: float
+    execution_type: str
+    status: str
+    created_at: datetime
+
+class ExportRequestCreate(BaseModel):
+    export_type: str
+    format_type: str
+    date_range: dict
+    filters: Optional[dict] = None
+
+class ExportRequestResponse(BaseModel):
+    id: int
+    export_type: str
+    format_type: str
+    status: str
+    file_path: Optional[str]
+    created_at: datetime
+
+class AdvancedAnalyticsResponse(BaseModel):
+    portfolio_value: float
+    total_return: float
+    sharpe_ratio: float
+    max_drawdown: float
+    win_rate: float
+    avg_trade_duration: float
+    risk_metrics: dict
+    performance_chart_data: List[dict]
+
 users_db: List[User] = []
 user_settings_db: List[UserSettings] = []
 broker_tokens_db: List[BrokerToken] = []
@@ -238,3 +380,8 @@ logs_db: List[Log] = []
 backtests_db: List[Backtest] = []
 password_reset_tokens_db: List[PasswordResetToken] = []
 wishlist_db: List[Wishlist] = []
+third_party_settings_db: List[ThirdPartySettings] = []
+news_analysis_db: List[NewsAnalysis] = []
+trading_strategies_db: List[TradingStrategy] = []
+bucket_orders_db: List[BucketOrder] = []
+export_requests_db: List[ExportRequest] = []

@@ -10,7 +10,10 @@ import {
   Activity,
   LogOut,
   Menu,
-  X
+  X,
+  Newspaper,
+  BarChart3,
+  Package
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -27,6 +30,9 @@ export default function Layout({ children, user, onLogout }: LayoutProps) {
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Trading', href: '/trading', icon: Activity },
+    { name: 'News Sentiment', href: '/news-sentiment', icon: Newspaper },
+    { name: 'Advanced Analytics', href: '/advanced-analytics', icon: BarChart3 },
+    { name: 'Bucket Trading', href: '/bucket-trading', icon: Package },
     { name: 'Settings', href: '/settings', icon: Settings },
     { name: 'Broker Setup', href: '/broker', icon: LinkIcon },
     { name: 'Logs', href: '/logs', icon: FileText },

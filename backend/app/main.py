@@ -11,7 +11,12 @@ from .models import (
     BacktestResponse, DashboardResponse, TradingMode, BrokerType, UserRole,
     PasswordResetRequest, PasswordResetConfirm, AdminUserResponse, AdminDashboardResponse,
     ManualTradeRequest, WishlistCreate, WishlistResponse, StockQuote, StockSearchResult,
-    users_db, user_settings_db, broker_tokens_db, trades_db, logs_db, backtests_db, password_reset_tokens_db, wishlist_db
+    ThirdPartySettings, ThirdPartySettingsUpdate, NewsAnalysisResponse, 
+    TradingStrategyCreate, TradingStrategyResponse, BucketOrderCreate, BucketOrderResponse,
+    ExportRequestCreate, ExportRequestResponse, AdvancedAnalyticsResponse,
+    users_db, user_settings_db, broker_tokens_db, trades_db, logs_db, backtests_db, 
+    password_reset_tokens_db, wishlist_db, third_party_settings_db, news_analysis_db,
+    trading_strategies_db, bucket_orders_db, export_requests_db
 )
 from .auth import (
     get_password_hash, authenticate_user, create_access_token, 
@@ -22,6 +27,9 @@ from .trading import trading_engine
 from .screener import screener
 from .email_service import email_service
 from .scheduler import trading_scheduler
+from .news_service import news_service
+from .export_service import export_service
+from .analytics_service import analytics_service
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -655,3 +663,245 @@ async def remove_from_wishlist(wishlist_id: int, current_user: User = Depends(ge
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to remove from wishlist"
         )
+
+@app.get("/me/third-party-settings")
+async def get_third_party_settings(current_user: User = Depends(get_current_user)):
+    try:
+        settings = next((s for s in third_party_settings_db if s.user_id == current_user.id), None)
+        if not settings:
+            settings = ThirdPartySettings(current_user.id)
+            third_party_settings_db.append(settings)
+        
+        return {
+            "email_service_provider": settings.email_service_provider,
+            "news_api_key": "***" if settings.news_api_key else None,
+            "telegram_bot_token": "***" if settings.telegram_bot_token else None,
+            "webhook_url": settings.webhook_url
+        }
+    except Exception as e:
+        logger.error(f"Error fetching third-party settings: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch settings")
+
+@app.put("/me/third-party-settings")
+async def update_third_party_settings(
+    settings_update: ThirdPartySettingsUpdate,
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        settings = next((s for s in third_party_settings_db if s.user_id == current_user.id), None)
+        if not settings:
+            settings = ThirdPartySettings(current_user.id)
+            third_party_settings_db.append(settings)
+        
+        if settings_update.email_service_provider is not None:
+            settings.email_service_provider = settings_update.email_service_provider
+        if settings_update.email_api_key is not None:
+            settings.email_api_key = encrypt_data(settings_update.email_api_key)
+        if settings_update.news_api_key is not None:
+            settings.news_api_key = encrypt_data(settings_update.news_api_key)
+        if settings_update.telegram_bot_token is not None:
+            settings.telegram_bot_token = encrypt_data(settings_update.telegram_bot_token)
+        if settings_update.webhook_url is not None:
+            settings.webhook_url = settings_update.webhook_url
+        
+        log = Log(current_user.id, "Updated third-party integration settings")
+        logs_db.append(log)
+        
+        return {"message": "Third-party settings updated successfully"}
+    except Exception as e:
+        logger.error(f"Error updating third-party settings: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update settings")
+
+@app.get("/news/sentiment/{symbol}")
+async def get_news_sentiment(symbol: str, current_user: User = Depends(get_current_user)):
+    try:
+        third_party_settings = next((s for s in third_party_settings_db if s.user_id == current_user.id), None)
+        if not third_party_settings or not third_party_settings.news_api_key:
+            raise HTTPException(status_code=400, detail="News API key not configured")
+        
+        api_key = decrypt_data(third_party_settings.news_api_key)
+        analyses = news_service.process_news_for_stock(symbol, api_key)
+        
+        return [NewsAnalysisResponse(
+            id=a.id,
+            stock_symbol=a.stock_symbol,
+            headline=a.headline,
+            sentiment_score=a.sentiment_score,
+            source=a.source,
+            impact_score=a.impact_score,
+            timestamp=a.timestamp
+        ) for a in analyses]
+    except Exception as e:
+        logger.error(f"Error fetching news sentiment: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch news sentiment")
+
+@app.get("/news/market-sentiment")
+async def get_market_sentiment(symbols: str, current_user: User = Depends(get_current_user)):
+    try:
+        symbol_list = symbols.split(",")
+        sentiment_summary = news_service.get_market_sentiment_summary(symbol_list)
+        return sentiment_summary
+    except Exception as e:
+        logger.error(f"Error fetching market sentiment: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch market sentiment")
+
+@app.get("/me/strategies")
+async def get_user_strategies(current_user: User = Depends(get_current_user)):
+    try:
+        user_strategies = [s for s in trading_strategies_db if s.user_id == current_user.id]
+        return [TradingStrategyResponse(
+            id=s.id,
+            name=s.name,
+            parameters=s.parameters,
+            is_active=s.is_active,
+            risk_level=s.risk_level,
+            created_at=s.created_at
+        ) for s in user_strategies]
+    except Exception as e:
+        logger.error(f"Error fetching strategies: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch strategies")
+
+@app.post("/me/strategies")
+async def create_strategy(
+    strategy: TradingStrategyCreate,
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        from .models import TradingStrategy
+        new_strategy = TradingStrategy(
+            user_id=current_user.id,
+            name=strategy.name,
+            parameters=strategy.parameters,
+            risk_level=strategy.risk_level
+        )
+        trading_strategies_db.append(new_strategy)
+        
+        log = Log(current_user.id, f"Created trading strategy: {strategy.name}")
+        logs_db.append(log)
+        
+        return TradingStrategyResponse(
+            id=new_strategy.id,
+            name=new_strategy.name,
+            parameters=new_strategy.parameters,
+            is_active=new_strategy.is_active,
+            risk_level=new_strategy.risk_level,
+            created_at=new_strategy.created_at
+        )
+    except Exception as e:
+        logger.error(f"Error creating strategy: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create strategy")
+
+@app.get("/me/bucket-orders")
+async def get_bucket_orders(current_user: User = Depends(get_current_user)):
+    try:
+        user_orders = [o for o in bucket_orders_db if o.user_id == current_user.id]
+        return [BucketOrderResponse(
+            id=o.id,
+            name=o.name,
+            stocks=o.stocks,
+            scheduled_time=o.scheduled_time,
+            total_capital=o.total_capital,
+            execution_type=o.execution_type,
+            status=o.status,
+            created_at=o.created_at
+        ) for o in user_orders]
+    except Exception as e:
+        logger.error(f"Error fetching bucket orders: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch bucket orders")
+
+@app.post("/me/bucket-orders")
+async def create_bucket_order(
+    bucket_order: BucketOrderCreate,
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        from .models import BucketOrder
+        new_order = BucketOrder(
+            user_id=current_user.id,
+            name=bucket_order.name,
+            stocks=bucket_order.stocks,
+            scheduled_time=bucket_order.scheduled_time,
+            total_capital=bucket_order.total_capital,
+            execution_type=bucket_order.execution_type
+        )
+        bucket_orders_db.append(new_order)
+        
+        log = Log(current_user.id, f"Created bucket order: {bucket_order.name}")
+        logs_db.append(log)
+        
+        return BucketOrderResponse(
+            id=new_order.id,
+            name=new_order.name,
+            stocks=new_order.stocks,
+            scheduled_time=new_order.scheduled_time,
+            total_capital=new_order.total_capital,
+            execution_type=new_order.execution_type,
+            status=new_order.status,
+            created_at=new_order.created_at
+        )
+    except Exception as e:
+        logger.error(f"Error creating bucket order: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create bucket order")
+
+@app.post("/me/export")
+async def create_export_request(
+    export_request: ExportRequestCreate,
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        from .models import ExportRequest
+        new_request = ExportRequest(
+            user_id=current_user.id,
+            export_type=export_request.export_type,
+            format_type=export_request.format_type,
+            date_range=export_request.date_range,
+            filters=export_request.filters
+        )
+        export_requests_db.append(new_request)
+        
+        try:
+            file_path = export_service.process_export_request(new_request)
+            log = Log(current_user.id, f"Generated {export_request.export_type} export")
+            logs_db.append(log)
+        except Exception as e:
+            logger.error(f"Export processing failed: {e}")
+        
+        return ExportRequestResponse(
+            id=new_request.id,
+            export_type=new_request.export_type,
+            format_type=new_request.format_type,
+            status=new_request.status,
+            file_path=new_request.file_path,
+            created_at=new_request.created_at
+        )
+    except Exception as e:
+        logger.error(f"Error creating export request: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create export request")
+
+@app.get("/me/exports")
+async def get_export_requests(current_user: User = Depends(get_current_user)):
+    try:
+        user_exports = [e for e in export_requests_db if e.user_id == current_user.id]
+        return [ExportRequestResponse(
+            id=e.id,
+            export_type=e.export_type,
+            format_type=e.format_type,
+            status=e.status,
+            file_path=e.file_path,
+            created_at=e.created_at
+        ) for e in user_exports]
+    except Exception as e:
+        logger.error(f"Error fetching export requests: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch export requests")
+
+@app.get("/me/analytics/advanced")
+async def get_advanced_analytics(
+    days: int = 30,
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        metrics = analytics_service.calculate_portfolio_metrics(current_user.id, days)
+        return AdvancedAnalyticsResponse(**metrics)
+    except Exception as e:
+        logger.error(f"Error fetching advanced analytics: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch analytics")
