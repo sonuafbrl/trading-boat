@@ -3,6 +3,10 @@ from typing import Optional, List
 from pydantic import BaseModel
 from enum import Enum
 
+class UserRole(str, Enum):
+    USER = "user"
+    ADMIN = "admin"
+
 class BrokerType(str, Enum):
     ZERODHA = "zerodha"
     ANGEL = "angel"
@@ -16,11 +20,12 @@ class TradeAction(str, Enum):
     SELL = "sell"
 
 class User:
-    def __init__(self, id: int, name: str, email: str, hashed_password: str):
+    def __init__(self, id: int, name: str, email: str, hashed_password: str, role: UserRole = UserRole.USER):
         self.id = id
         self.name = name
         self.email = email
         self.hashed_password = hashed_password
+        self.role = role
         self.created_at = datetime.now()
 
 class UserSettings:
@@ -63,6 +68,15 @@ class Log:
         self.message = message
         self.timestamp = datetime.now()
 
+class PasswordResetToken:
+    def __init__(self, user_id: int, token: str):
+        self.id = len(password_reset_tokens_db) + 1
+        self.user_id = user_id
+        self.token = token
+        self.created_at = datetime.now()
+        self.expires_at = datetime.now().replace(hour=datetime.now().hour + 1)
+        self.used = False
+
 class Backtest:
     def __init__(self, user_id: int, strategy: str, results_json: dict):
         self.id = len(backtests_db) + 1
@@ -75,6 +89,7 @@ class UserCreate(BaseModel):
     name: str
     email: str
     password: str
+    role: Optional[UserRole] = UserRole.USER
 
 class UserLogin(BaseModel):
     email: str
@@ -84,6 +99,8 @@ class UserResponse(BaseModel):
     id: int
     name: str
     email: str
+    role: UserRole
+    created_at: datetime
 
 class UserSettingsUpdate(BaseModel):
     capital_per_day: Optional[float] = None
@@ -125,6 +142,30 @@ class BacktestResponse(BaseModel):
     results: dict
     created_at: datetime
 
+class PasswordResetRequest(BaseModel):
+    email: str
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str
+
+class AdminUserResponse(BaseModel):
+    id: int
+    name: str
+    email: str
+    role: UserRole
+    created_at: datetime
+    total_trades: int
+    total_pnl: float
+    last_login: Optional[datetime] = None
+
+class AdminDashboardResponse(BaseModel):
+    total_users: int
+    total_trades: int
+    total_pnl: float
+    active_users_today: int
+    recent_users: List[AdminUserResponse]
+
 class DashboardResponse(BaseModel):
     total_pnl: float
     today_pnl: float
@@ -140,3 +181,4 @@ broker_tokens_db: List[BrokerToken] = []
 trades_db: List[Trade] = []
 logs_db: List[Log] = []
 backtests_db: List[Backtest] = []
+password_reset_tokens_db: List[PasswordResetToken] = []

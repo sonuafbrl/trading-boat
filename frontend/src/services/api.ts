@@ -4,6 +4,8 @@ export interface User {
   id: number;
   name: string;
   email: string;
+  role: 'user' | 'admin';
+  created_at: string;
 }
 
 export interface UserSettings {
@@ -189,6 +191,43 @@ class ApiService {
 
   isAuthenticated(): boolean {
     return !!this.token;
+  }
+
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    return this.request('/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+    return this.request('/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({
+        token,
+        new_password: newPassword,
+      }),
+    });
+  }
+
+  async getAdminDashboard(): Promise<any> {
+    return this.request('/admin/dashboard');
+  }
+
+  async getAllUsers(skip: number = 0, limit: number = 50): Promise<any> {
+    return this.request(`/admin/users?skip=${skip}&limit=${limit}`);
+  }
+
+  async getUserById(userId: number): Promise<any> {
+    return this.request(`/admin/users/${userId}`);
+  }
+
+  async getAllTrades(skip: number = 0, limit: number = 100): Promise<any> {
+    return this.request(`/admin/trades?skip=${skip}&limit=${limit}`);
+  }
+
+  async getAllLogs(skip: number = 0, limit: number = 100): Promise<any> {
+    return this.request(`/admin/logs?skip=${skip}&limit=${limit}`);
   }
 }
 

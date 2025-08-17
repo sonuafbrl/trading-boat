@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { apiService } from '../services/api';
 import { CheckCircle, XCircle, Loader } from 'lucide-react';
 
 export default function OAuthCallback() {

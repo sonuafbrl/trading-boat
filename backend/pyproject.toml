@@ -19,6 +19,7 @@ requests = "^2.32.4"
 yfinance = "^0.2.65"
 ta = "^0.11.0"
 scikit-learn = "^1.7.1"
+aiosmtplib = "^3.0.2"
 
 
 [build-system]

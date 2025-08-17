@@ -111,6 +111,15 @@ export default function Login({ onLogin }: LoginProps) {
               {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </div>
+
+          <div className="text-center">
+            <Link
+              to="/forgot-password"
+              className="text-sm text-indigo-400 hover:text-indigo-300"
+            >
+              Forgot your password?
+            </Link>
+          </div>
         </form>
       </div>
     </div>
