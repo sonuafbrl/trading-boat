@@ -1,7 +1,9 @@
 from typing import List, Dict, Optional
 from datetime import datetime
 import logging
-from .models import User, UserSettings, Trade, Log, TradeAction, TradingMode, user_settings_db, trades_db, logs_db
+import random
+from .models import (User, UserSettings, Trade, Log, TradeAction, TradingMode, Wishlist, StockPerformance,
+                     user_settings_db, trades_db, logs_db, wishlist_db)
 from .screener import screener
 
 logger = logging.getLogger(__name__)
@@ -146,5 +148,108 @@ class TradingEngine:
                     })
         
         return executed_trades
+    
+    def execute_manual_trade(self, user_id: int, stock_symbol: str, action: TradeAction, 
+                           quantity: int, price: Optional[float] = None) -> bool:
+        """Execute manual buy/sell order"""
+        user_settings = self.get_user_settings(user_id)
+        if not user_settings:
+            self.log_trade_activity(user_id, f"Failed to execute {action.value}: No user settings found")
+            return False
+        
+        if price is None:
+            price = self.get_current_stock_price(stock_symbol)
+        
+        if action == TradeAction.BUY:
+            return self.execute_buy_order(user_id, stock_symbol, price, quantity)
+        else:
+            return self.execute_sell_order(user_id, stock_symbol, price, quantity)
+    
+    def get_current_stock_price(self, symbol: str) -> float:
+        """Get current stock price (simulated)"""
+        base_prices = {
+            "RELIANCE": 2500.0,
+            "TCS": 3200.0,
+            "INFY": 1400.0,
+            "HDFCBANK": 1600.0,
+            "ICICIBANK": 900.0,
+            "SBIN": 550.0,
+            "ITC": 420.0,
+            "BHARTIARTL": 850.0,
+            "KOTAKBANK": 1800.0,
+            "LT": 2100.0
+        }
+        base_price = base_prices.get(symbol, 1000.0)
+        variation = random.uniform(-0.05, 0.05)  # ±5%
+        return round(base_price * (1 + variation), 2)
+    
+    def get_stock_performance(self, symbol: str) -> StockPerformance:
+        """Get stock performance data (simulated)"""
+        current_price = self.get_current_stock_price(symbol)
+        day_change = random.uniform(-50, 50)
+        day_change_percent = (day_change / current_price) * 100
+        volume = random.randint(100000, 10000000)
+        market_cap = current_price * random.randint(1000000, 100000000)
+        pe_ratio = random.uniform(10, 50)
+        
+        return StockPerformance(
+            symbol=symbol,
+            current_price=current_price,
+            day_change=day_change,
+            day_change_percent=day_change_percent,
+            volume=volume,
+            market_cap=market_cap,
+            pe_ratio=pe_ratio
+        )
+    
+    def search_stocks(self, query: str) -> List[Dict]:
+        """Search for stocks by symbol or name"""
+        stocks = [
+            {"symbol": "RELIANCE", "name": "Reliance Industries Ltd", "exchange": "NSE"},
+            {"symbol": "TCS", "name": "Tata Consultancy Services", "exchange": "NSE"},
+            {"symbol": "INFY", "name": "Infosys Ltd", "exchange": "NSE"},
+            {"symbol": "HDFCBANK", "name": "HDFC Bank Ltd", "exchange": "NSE"},
+            {"symbol": "ICICIBANK", "name": "ICICI Bank Ltd", "exchange": "NSE"},
+            {"symbol": "SBIN", "name": "State Bank of India", "exchange": "NSE"},
+            {"symbol": "ITC", "name": "ITC Ltd", "exchange": "NSE"},
+            {"symbol": "BHARTIARTL", "name": "Bharti Airtel Ltd", "exchange": "NSE"},
+            {"symbol": "KOTAKBANK", "name": "Kotak Mahindra Bank", "exchange": "NSE"},
+            {"symbol": "LT", "name": "Larsen & Toubro Ltd", "exchange": "NSE"},
+        ]
+        
+        query_upper = query.upper()
+        results = []
+        for stock in stocks:
+            if query_upper in stock["symbol"] or query_upper in stock["name"].upper():
+                stock_with_price = stock.copy()
+                stock_with_price["current_price"] = self.get_current_stock_price(stock["symbol"])
+                results.append(stock_with_price)
+        
+        return results[:10]  # Limit to 10 results
+    
+    def add_to_wishlist(self, user_id: int, stock_symbol: str, target_price: Optional[float] = None, 
+                       notes: Optional[str] = None) -> bool:
+        """Add stock to user's wishlist"""
+        for item in wishlist_db:
+            if item.user_id == user_id and item.stock_symbol == stock_symbol:
+                return False  # Already exists
+        
+        wishlist_item = Wishlist(user_id, stock_symbol, target_price, notes)
+        wishlist_db.append(wishlist_item)
+        self.log_trade_activity(user_id, f"Added {stock_symbol} to wishlist")
+        return True
+    
+    def remove_from_wishlist(self, user_id: int, wishlist_id: int) -> bool:
+        """Remove stock from user's wishlist"""
+        for i, item in enumerate(wishlist_db):
+            if item.id == wishlist_id and item.user_id == user_id:
+                removed_item = wishlist_db.pop(i)
+                self.log_trade_activity(user_id, f"Removed {removed_item.stock_symbol} from wishlist")
+                return True
+        return False
+    
+    def get_user_wishlist(self, user_id: int) -> List[Wishlist]:
+        """Get user's wishlist"""
+        return [item for item in wishlist_db if item.user_id == user_id]
 
 trading_engine = TradingEngine()

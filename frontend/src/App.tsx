@@ -8,6 +8,7 @@ import Settings from './pages/Settings';
 import BrokerSetup from './pages/BrokerSetup';
 import Logs from './pages/Logs';
 import Backtest from './pages/Backtest';
+import Trading from './pages/Trading';
 import Layout from './components/Layout';
 import AdminLayout from './components/AdminLayout';
 import OAuthCallback from './pages/OAuthCallback';
@@ -75,6 +76,7 @@ function App() {
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/trading" element={<Trading />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/broker" element={<BrokerSetup />} />
                 <Route path="/callback" element={<OAuthCallback />} />

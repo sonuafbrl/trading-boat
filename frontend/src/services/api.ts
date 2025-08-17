@@ -62,6 +62,39 @@ export interface BacktestResult {
   created_at: string;
 }
 
+export interface ManualTradeRequest {
+  stock_symbol: string;
+  action: 'buy' | 'sell';
+  quantity: number;
+  price?: number;
+}
+
+export interface WishlistItem {
+  id: number;
+  stock_symbol: string;
+  target_price?: number;
+  notes?: string;
+  current_price?: number;
+  created_at: string;
+}
+
+export interface StockQuote {
+  symbol: string;
+  current_price: number;
+  day_change: number;
+  day_change_percent: number;
+  volume: number;
+  market_cap?: number;
+  pe_ratio?: number;
+}
+
+export interface StockSearchResult {
+  symbol: string;
+  name: string;
+  exchange: string;
+  current_price?: number;
+}
+
 class ApiService {
   private token: string | null = null;
 
@@ -228,6 +261,42 @@ class ApiService {
 
   async getAllLogs(skip: number = 0, limit: number = 100): Promise<any> {
     return this.request(`/admin/logs?skip=${skip}&limit=${limit}`);
+  }
+
+  async executeManualTrade(trade: ManualTradeRequest): Promise<{ message: string }> {
+    return this.request('/me/trade/manual', {
+      method: 'POST',
+      body: JSON.stringify(trade),
+    });
+  }
+
+  async searchStocks(query: string): Promise<{ stocks: StockSearchResult[] }> {
+    return this.request(`/stocks/search?q=${encodeURIComponent(query)}`);
+  }
+
+  async getStockQuote(symbol: string): Promise<StockQuote> {
+    return this.request(`/stocks/${symbol}/quote`);
+  }
+
+  async getWishlist(): Promise<WishlistItem[]> {
+    return this.request('/me/wishlist');
+  }
+
+  async addToWishlist(stockSymbol: string, targetPrice?: number, notes?: string): Promise<{ message: string }> {
+    return this.request('/me/wishlist', {
+      method: 'POST',
+      body: JSON.stringify({
+        stock_symbol: stockSymbol,
+        target_price: targetPrice,
+        notes: notes,
+      }),
+    });
+  }
+
+  async removeFromWishlist(wishlistId: number): Promise<{ message: string }> {
+    return this.request(`/me/wishlist/${wishlistId}`, {
+      method: 'DELETE',
+    });
   }
 }
 

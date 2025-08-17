@@ -77,6 +77,27 @@ class PasswordResetToken:
         self.expires_at = datetime.now().replace(hour=datetime.now().hour + 1)
         self.used = False
 
+class Wishlist:
+    def __init__(self, user_id: int, stock_symbol: str, target_price: Optional[float] = None, notes: Optional[str] = None):
+        self.id = len(wishlist_db) + 1
+        self.user_id = user_id
+        self.stock_symbol = stock_symbol
+        self.target_price = target_price
+        self.notes = notes
+        self.created_at = datetime.now()
+
+class StockPerformance:
+    def __init__(self, symbol: str, current_price: float, day_change: float, day_change_percent: float,
+                 volume: int, market_cap: Optional[float] = None, pe_ratio: Optional[float] = None):
+        self.symbol = symbol
+        self.current_price = current_price
+        self.day_change = day_change
+        self.day_change_percent = day_change_percent
+        self.volume = volume
+        self.market_cap = market_cap
+        self.pe_ratio = pe_ratio
+        self.timestamp = datetime.now()
+
 class Backtest:
     def __init__(self, user_id: int, strategy: str, results_json: dict):
         self.id = len(backtests_db) + 1
@@ -142,6 +163,40 @@ class BacktestResponse(BaseModel):
     results: dict
     created_at: datetime
 
+class ManualTradeRequest(BaseModel):
+    stock_symbol: str
+    action: TradeAction
+    quantity: int
+    price: Optional[float] = None  # If None, use market price
+
+class WishlistCreate(BaseModel):
+    stock_symbol: str
+    target_price: Optional[float] = None
+    notes: Optional[str] = None
+
+class WishlistResponse(BaseModel):
+    id: int
+    stock_symbol: str
+    target_price: Optional[float]
+    notes: Optional[str]
+    current_price: Optional[float]
+    created_at: datetime
+
+class StockQuote(BaseModel):
+    symbol: str
+    current_price: float
+    day_change: float
+    day_change_percent: float
+    volume: int
+    market_cap: Optional[float] = None
+    pe_ratio: Optional[float] = None
+
+class StockSearchResult(BaseModel):
+    symbol: str
+    name: str
+    exchange: str
+    current_price: Optional[float] = None
+
 class PasswordResetRequest(BaseModel):
     email: str
 
@@ -182,3 +237,4 @@ trades_db: List[Trade] = []
 logs_db: List[Log] = []
 backtests_db: List[Backtest] = []
 password_reset_tokens_db: List[PasswordResetToken] = []
+wishlist_db: List[Wishlist] = []

@@ -66,6 +66,16 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
     used BOOLEAN DEFAULT FALSE
 );
 
+CREATE TABLE IF NOT EXISTS wishlist (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    stock_symbol VARCHAR(20) NOT NULL,
+    target_price DECIMAL(10,2),
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, stock_symbol)
+);
+
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_user_settings_user_id ON user_settings(user_id);
 CREATE INDEX IF NOT EXISTS idx_broker_tokens_user_id ON broker_tokens(user_id);
@@ -76,3 +86,5 @@ CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON logs(timestamp);
 CREATE INDEX IF NOT EXISTS idx_backtests_user_id ON backtests(user_id);
 CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token ON password_reset_tokens(token);
 CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id ON password_reset_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_wishlist_user_id ON wishlist(user_id);
+CREATE INDEX IF NOT EXISTS idx_wishlist_stock_symbol ON wishlist(stock_symbol);

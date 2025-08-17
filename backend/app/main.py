@@ -10,7 +10,8 @@ from .models import (
     BrokerCredentials, TradeResponse, LogResponse, BacktestRequest, 
     BacktestResponse, DashboardResponse, TradingMode, BrokerType, UserRole,
     PasswordResetRequest, PasswordResetConfirm, AdminUserResponse, AdminDashboardResponse,
-    users_db, user_settings_db, broker_tokens_db, trades_db, logs_db, backtests_db, password_reset_tokens_db
+    ManualTradeRequest, WishlistCreate, WishlistResponse, StockQuote, StockSearchResult,
+    users_db, user_settings_db, broker_tokens_db, trades_db, logs_db, backtests_db, password_reset_tokens_db, wishlist_db
 )
 from .auth import (
     get_password_hash, authenticate_user, create_access_token, 
@@ -529,3 +530,128 @@ async def get_all_logs(admin_user: User = Depends(get_admin_user), skip: int = 0
         "skip": skip,
         "limit": limit
     }
+
+@app.post("/me/trade/manual")
+async def execute_manual_trade(request: ManualTradeRequest, current_user: User = Depends(get_current_user)):
+    try:
+        success = trading_engine.execute_manual_trade(
+            current_user.id, 
+            request.stock_symbol, 
+            request.action, 
+            request.quantity, 
+            request.price
+        )
+        
+        if success:
+            return {"message": f"Successfully executed {request.action.value} order for {request.stock_symbol}"}
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Failed to execute trade"
+            )
+    except Exception as e:
+        logger.error(f"Manual trade error for user {current_user.id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to execute manual trade"
+        )
+
+@app.get("/stocks/search")
+async def search_stocks(q: str, current_user: User = Depends(get_current_user)):
+    try:
+        results = trading_engine.search_stocks(q)
+        return {"stocks": results}
+    except Exception as e:
+        logger.error(f"Stock search error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to search stocks"
+        )
+
+@app.get("/stocks/{symbol}/quote", response_model=StockQuote)
+async def get_stock_quote(symbol: str, current_user: User = Depends(get_current_user)):
+    try:
+        performance = trading_engine.get_stock_performance(symbol)
+        return StockQuote(
+            symbol=performance.symbol,
+            current_price=performance.current_price,
+            day_change=performance.day_change,
+            day_change_percent=performance.day_change_percent,
+            volume=performance.volume,
+            market_cap=performance.market_cap,
+            pe_ratio=performance.pe_ratio
+        )
+    except Exception as e:
+        logger.error(f"Stock quote error for {symbol}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get stock quote"
+        )
+
+@app.get("/me/wishlist")
+async def get_user_wishlist(current_user: User = Depends(get_current_user)):
+    try:
+        wishlist_items = trading_engine.get_user_wishlist(current_user.id)
+        response_items = []
+        
+        for item in wishlist_items:
+            current_price = trading_engine.get_current_stock_price(item.stock_symbol)
+            response_items.append(WishlistResponse(
+                id=item.id,
+                stock_symbol=item.stock_symbol,
+                target_price=item.target_price,
+                notes=item.notes,
+                current_price=current_price,
+                created_at=item.created_at
+            ))
+        
+        return response_items
+    except Exception as e:
+        logger.error(f"Wishlist fetch error for user {current_user.id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch wishlist"
+        )
+
+@app.post("/me/wishlist")
+async def add_to_wishlist(request: WishlistCreate, current_user: User = Depends(get_current_user)):
+    try:
+        success = trading_engine.add_to_wishlist(
+            current_user.id,
+            request.stock_symbol,
+            request.target_price,
+            request.notes
+        )
+        
+        if success:
+            return {"message": f"Added {request.stock_symbol} to wishlist"}
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Stock already in wishlist"
+            )
+    except Exception as e:
+        logger.error(f"Add to wishlist error for user {current_user.id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to add to wishlist"
+        )
+
+@app.delete("/me/wishlist/{wishlist_id}")
+async def remove_from_wishlist(wishlist_id: int, current_user: User = Depends(get_current_user)):
+    try:
+        success = trading_engine.remove_from_wishlist(current_user.id, wishlist_id)
+        
+        if success:
+            return {"message": "Removed from wishlist"}
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Wishlist item not found"
+            )
+    except Exception as e:
+        logger.error(f"Remove from wishlist error for user {current_user.id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to remove from wishlist"
+        )

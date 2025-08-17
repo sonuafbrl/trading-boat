@@ -7,6 +7,7 @@ import {
   Link as LinkIcon, 
   FileText, 
   TrendingUp, 
+  Activity,
   LogOut,
   Menu,
   X
@@ -25,6 +26,7 @@ export default function Layout({ children, user, onLogout }: LayoutProps) {
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+    { name: 'Trading', href: '/trading', icon: Activity },
     { name: 'Settings', href: '/settings', icon: Settings },
     { name: 'Broker Setup', href: '/broker', icon: LinkIcon },
     { name: 'Logs', href: '/logs', icon: FileText },
